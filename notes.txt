@@ -1,0 +1,10 @@
+How to split up some of these files
+
+Directory for utility functions
+Things like checking balance
+Building a message
+Sending a built message
+
+
+Directory for common messages that need to be built
+These can be broken down further into files for astroport, anchor, basic terra functions etc
