@@ -1,7 +1,7 @@
-const { LCDClient, Wallet, MnemonicKey, StdFee, MsgExecuteContract, MsgSend, Coin } = require('@terra-money/terra.js');
-const {fabricateMarketRedeemStable, fabricateMarketDepositStableCoin, columbus5, AddressProviderFromJson, fabricateLiquidationQueueSubmitBid, fabricateCw20Send } = require('@anchor-protocol/anchor.js');
+const { LCDClient, Wallet, MnemonicKey, MsgExecuteContract } = require('@terra-money/terra.js');
+const { columbus5, AddressProviderFromJson, fabricateLiquidationQueueSubmitBid, fabricateCw20Send } = require('@anchor-protocol/anchor.js');
 const secrets = require('./secrets.json');
-const {buildExecuteMsg, sendMsg} = require('./utils');
+const {buildExecuteMsg, sendMsg, sleep} = require('./utils');
 
 const terra = new LCDClient({
 	URL: 'https://lcd.terra.dev',
@@ -49,10 +49,6 @@ const getCoinBalance = async (denom) => {
 	} catch {
 		return "0";
 	}
-}
-
-function sleep(millis) {
-  return new Promise(resolve => setTimeout(resolve, millis));
 }
 
 // What does the full process look like for Anchor liquidations?

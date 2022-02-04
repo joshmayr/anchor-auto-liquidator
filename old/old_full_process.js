@@ -21,16 +21,6 @@ const astroportRouterAddress = "terra16t7dpwwgx9n3lq6l6te3753lsjqwhxwpday9zx";
 // Anchor smart contract addresses
 const anchorAddressProvider = new AddressProviderFromJson(columbus5);
 
-const makeCW20TradeMsg = async (amount, pairContract, base64Msg) => {
-	return fabricateCw20Send({
-		"address": owner.accAddress,
-		"amount": amount, // TODO: 
-		"contract_address": anchorAddressProvider.bLunaToken(),
-		"contract": pairContract,
-		"msg": base64Msg
-	})
-}
-
 // Get User Bids
 
 // Will use this to check 2 things
@@ -96,6 +86,46 @@ const getNativePairInfo = async(denom1, denom2) => {
 	);
 }
 
+// Perform native swap on astroport
+const performNativeTrade = async (contractAddress, offer_denom, offer_amount) => {
+	return [
+		new MsgExecuteContract(owner.accAddress, contractAddress, {
+			  "swap": {
+				"max_spread": "0.005",
+				"offer_asset": {
+				  "info": {
+					"native_token": {
+					  "denom": offer_denom
+					}
+				  },
+				  "amount": offer_amount
+				},
+				"belief_price": "62.694745553375171626"
+			  }
+			})
+	]
+}
+
+// Perform native->cw20 swap on astroport
+const performNativeCW20Trade = async (contractAddress, offer_denom, offer_amount) => {
+	return [
+		new MsgExecuteContract(owner.accAddress, contractAddress, {
+			  "swap": {
+				"max_spread": "0.005",
+				"offer_asset": {
+				  "info": {
+					"native_token": {
+					  "denom": offer_denom
+					}
+				  },
+				  "amount": offer_amount
+				},
+				"belief_price": "62.694745553375171626"
+			  }
+			})
+	]
+}
+
 const buildSwapMsg = async (max_spread, belief_price) => {
 	return {
 		"swap": {
@@ -126,11 +156,40 @@ const buildNativeSwapMsg = async (pairContractAddress, max_spread, belief_price,
 	]
 }
 
+
+
+const performCW20Trade = async (tokenContractAddress, base64Message, amount, pairContract) => {
+	return [
+		new MsgExecuteContract(owner.accAddress, tokenContractAddress, {
+			"send": {
+				"msg": base64Message,
+				"amount": amount,
+				"contract": pairContract
+			}
+		})
+	]
+}
+
+const makeCW20TradeMsg = async (amount, pairContract, base64Msg) => {
+	return fabricateCw20Send({
+		"address": owner.accAddress,
+		"amount": "0.001", // TODO: 
+		"contract_address": anchorAddressProvider.bLunaToken(),
+		"contract": pairContract,
+		"msg": base64Msg
+	})
+}
+
+
+
+// Need to get the belief price, and the amount of token that we want to trade from the wallet balance, then should be able to perform a swap with bLUNA
+
 const getCoinBalance = async (denom) => {
 	const balances = await terra.bank.balance(owner.accAddress);
 	const balance = balances[0]["_coins"][denom]["amount"];
 	return balance;
 }
+//getCoinBalance("uusd");
 
 const getCW20BalanceQuery = async (tokenAddress) => {
 	return await terra.wasm.contractQuery(
@@ -141,6 +200,15 @@ const getCW20BalanceQuery = async (tokenAddress) => {
 		}
 	}
 	);
+}
+
+const getCW20Balance = async (tokenAddress) => {
+	console.log(await getCW20BalanceQuery(tokenAddress));
+}
+//getCW20Balance(anchorAddressProvider.bLunaToken());
+
+const getSwapAmountFromPercentHolding = async (percent) => { // TODO: Finish this function for when swapping coins that we don't want to swap full balance of
+	return percent;
 }
 
 const getPairInfo = async(address, denom) => {
@@ -221,6 +289,15 @@ const getLunaUstBeliefPrice = async () => {
 	return (parseInt(uustReceived.amount) / 1000000).toString();
 }
 
+/*
+In order to swap from bLUNA to LUNA there are a few steps:
+1) Get the amount of bLUNA that we want to swap to LUNA, this should be 100% of our bLUNA balance (getCW20Balance)
+
+2) Get the belief price for the bLUNA/LUNA trade, (queryLunaTrade)
+3) Get the astroport pair contract for bBLUNA/LUNA (getPairInfo)
+4) Create the swap message (base64EncodeMsg)
+5) Execute the send message on the bLUNA contract to perform the swap (performCW20Trade)
+*/
 const bLunaToLunaSwap = async () => {
 	const bLUNASwapAmount = (await getCW20BalanceQuery(anchorAddressProvider.bLunaToken())).balance; // #1
 	const beliefPrice = await getBeliefPrice(); // #2
@@ -234,6 +311,16 @@ const bLunaToLunaSwap = async () => {
 	console.log(executedTransaction);
 }
 
+//bLunaToLunaSwap();
+
+
+/*
+1) Get the amount of LUNA that we want to swap to UST, for now we need to pay for transactions with LUNA, so aim to always keep 0.3 LUNA in our account
+2) Get the belief price for the LUNA/UST trade
+3) Get the astroport pair contract for LUNA/UST
+4) Create the swap message
+5) Execute the swap message on the pair contract
+*/
 const lunaToUstSwap = async () => {
 	const ulunaBalance = await getCoinBalance("uluna"); // #1
 	const beliefPrice = await getLunaUstBeliefPrice(); // #2
@@ -248,6 +335,8 @@ const lunaToUstSwap = async () => {
 	console.log(swapTransaction);
 }
 
+//lunaToUstSwap();
+
 
 const convertLiquidatedBlunaToUst = async () => {
 	await bLunaToLunaSwap();
@@ -256,3 +345,4 @@ const convertLiquidatedBlunaToUst = async () => {
 convertLiquidatedBlunaToUst();
 // TODO: Confirm that the above function works
 // TODO: See if I can simplify the two functions into one function that sends 1 transaction that executes both swaps, I think it should be possible
+// TODO: Clean up this file

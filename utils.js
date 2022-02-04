@@ -14,4 +14,8 @@ async function sendMsg(client, wallet, msg) {
 	return await client.tx.broadcast(tx);
 }
 
-module.exports = { buildExecuteMsg, sendMsg }
+function sleep(millis) {
+  return new Promise(resolve => setTimeout(resolve, millis));
+}
+
+module.exports = { buildExecuteMsg, sendMsg, sleep }
