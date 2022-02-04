@@ -1,4 +1,4 @@
-const { LCDClient, Wallet, MnemonicKey, MsgExecuteContract } = require('@terra-money/terra.js');
+const { LCDClient, Wallet, MnemonicKey } = require('@terra-money/terra.js');
 const { columbus5, AddressProviderFromJson, fabricateLiquidationQueueSubmitBid, fabricateCw20Send } = require('@anchor-protocol/anchor.js');
 const secrets = require('./secrets.json');
 const {buildExecuteMsg, sendMsg, sleep} = require('./utils');
@@ -90,7 +90,11 @@ const activateBids = async () => {
 		for(i = 0; i < userBids.bids.length; i++) {
 			if((userBids.bids[i].wait_end != 0 && userBids.bids[i].wait_end != null) && userBids.bids[i].wait_end < currentTime) {
 				console.log(userBids);
-				await activateBidsMsg()
+				await buildExecuteMsg(owner.accAddress, anchorAddressProvider.liquidationQueue(), {
+					  "activate_bids": {
+						"collateral_token": anchorAddressProvider.bLunaToken(), // TODO: Make this a var to allow for either bLUNA or bETH liquidations
+					  }
+					})
 				.then((activateBidsMsg) => {sendMsg(terra, wallet, activateBidsMsg)
 					.then((txReceipt) => {
 						console.log(txReceipt)
@@ -130,19 +134,6 @@ const claimLiquidations = async () => {
 }
 
 
-
-// TODO: Write the functions for activating bids and claiming liquidations
-const activateBidsMsg = async () => {
-	return [
-		new MsgExecuteContract(owner.accAddress, anchorAddressProvider.liquidationQueue(), {
-			  "activate_bids": {
-				"collateral_token": anchorAddressProvider.bLunaToken(), // TODO: Make this a var to allow for either bLUNA or bETH liquidations
-			  }
-			})
-	]
-}
-
-
 async function main() {
 	while(true) {
 		await enterLiquidationQueue(1_000_000); // Still have to make sure we keep a little bit on UST in our account (Enough UST to keep us above zero, but below the minimum UST required to create a new bid)
@@ -159,4 +150,6 @@ async function main() {
 // Then it is a matter of stitching this code with the Astroport swap code
 // Then we just need to clean up all of the code so that it is easier to read, more maintainable, more modular
 
-main()
+//main()
+
+module.exports = {enterLiquidationQueue, activateBids, claimLiquidations, queryUserBids};
